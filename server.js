@@ -1,5 +1,7 @@
 const http = require("http");
+// const { resolve } = require("path");
 const { v4: uuidv4 } = require("uuid");
+const errMessage = require('./errorMessage');
 const todos = [];
 const requestListener = (request, response) => {
     const headers = {
@@ -12,9 +14,6 @@ const requestListener = (request, response) => {
     request.on("data", chunk =>{
         body+= chunk;
     })
-    request.on("end", () =>{
-        console.log(JSON.parse(body).title);
-    })
     if (request.url =="/todos" && request.method =="GET"){
         response.writeHead(200, headers); 
         response.write(JSON.stringify({
@@ -23,12 +22,28 @@ const requestListener = (request, response) => {
         }));
         response.end();
     }else if (request.url =="/todos" && request.method =="POST"){
-        response.writeHead(200, headers);
-        response.write(JSON.stringify({
-            "status": "success",
-            "data": todos,
-        }));
-        response.end();
+        request.on("end", () =>{
+            try{
+                const title = JSON.parse(body).title;
+                if (title !== undefined){
+                    const todo = {
+                        "title": title,
+                        "id": uuidv4()
+                    }
+                    todos.push(todo);
+                    response.writeHead(200, headers);
+                    response.write(JSON.stringify({
+                        "status": "success",
+                        "data": todos,
+                    }));
+                    response.end();
+                }else{
+                    errMessage(response);
+                }
+            }catch(error){ 
+                errMessage(response);
+            }
+        })
     }else if (request.method =="OPTIONS"){
         response.writeHead(200, headers);
         response.end();
@@ -44,3 +59,4 @@ const requestListener = (request, response) => {
 
 const server = http.createServer(requestListener);
 server.listen(3005);
+
